@@ -524,6 +524,7 @@ impl<L, R> Either<L, R> {
         }
     }
 
+    ///
     /// Convert `Pin<&Either<L, R>>` to `Either<Pin<&L>, Pin<&R>>`.
     ///
     /// # Examples
@@ -553,6 +554,21 @@ impl<L, R> Either<L, R> {
         }
     }
 
+    ///
+    /// Convert `Pin<&mut Either<L, R>>` to `Either<Pin<&mut L>, Pin<&mut R>>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use either::*;
+    /// use std::pin::Pin;
+    ///
+    /// let mut either: Either<String, u32> = Left("3".into());
+    /// let pinned = Pin::new(&mut either);
+    ///
+    /// assert_eq!(pinned.as_pin_mut(), Left(Pin::new(&mut "3".into())));
+    ///
+    /// ```
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Either<Pin<&mut L>, Pin<&mut R>> {
 
         // the following unsafe invocations are safe, for the same reasons as with the above
