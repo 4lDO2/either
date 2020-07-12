@@ -23,10 +23,12 @@ extern crate serde;
 
 use std::convert::{AsRef, AsMut};
 use std::fmt;
+use std::future::Future;
 use std::iter;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::pin::Pin;
+use std::task;
 #[cfg(any(test, feature = "use_std"))]
 use std::io::{self, Write, Read, BufRead};
 #[cfg(any(test, feature = "use_std"))]
@@ -777,6 +779,23 @@ impl<L, R> DoubleEndedIterator for Either<L, R>
 impl<L, R> ExactSizeIterator for Either<L, R>
     where L: ExactSizeIterator, R: ExactSizeIterator<Item=L::Item>
 {
+}
+
+impl<L, R, O> Future for Either<L, R>
+where
+    L: Future<Output = O>,
+    R: Future<Output = O>,
+{
+    type Output = O;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> task::Poll<Self::Output> {
+        let this = self.as_pin_mut();
+
+        match this {
+            Either::Left(l) => l.poll(cx),
+            Either::Right(r) => r.poll(cx),
+        }
+    }
 }
 
 #[cfg(any(test, feature = "use_std"))]
