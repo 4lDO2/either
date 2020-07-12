@@ -524,7 +524,6 @@ impl<L, R> Either<L, R> {
         }
     }
 
-    ///
     /// Convert `Pin<&Either<L, R>>` to `Either<Pin<&L>, Pin<&R>>`.
     ///
     /// # Examples
@@ -554,7 +553,6 @@ impl<L, R> Either<L, R> {
         }
     }
 
-    ///
     /// Convert `Pin<&mut Either<L, R>>` to `Either<Pin<&mut L>, Pin<&mut R>>`.
     ///
     /// # Examples
@@ -584,6 +582,32 @@ impl<L, R> Either<L, R> {
                 Either::Left(ref mut l) => Either::Left(Pin::new_unchecked(l)),
                 Either::Right(ref mut r) => Either::Right(Pin::new_unchecked(r)),
             }
+        }
+    }
+}
+impl<L, R> Either<Pin<L>, Pin<R>> {
+    /// Convert Either<Pin<L>, Pin<R>> to Either<L, R>, provided that the types can be unpinned.
+    ///
+    /// # Examples
+    /// ```
+    /// # use either::*;
+    /// use std::pin::Pin;
+    ///
+    /// let either: Either<Pin<&u8>, Pin<&i8>> = Right(Pin::new(&3));
+    /// let unpinned = either.unpinned();
+    /// assert_eq!(unpinned, Right(&3));
+    ///
+    /// ```
+    pub fn unpinned(self) -> Either<L, R>
+    where
+        L: Deref,
+        L::Target: Unpin,
+        R: Deref,
+        R::Target: Unpin,
+    {
+        match self {
+            Either::Left(l) => Either::Left(Pin::into_inner(l)),
+            Either::Right(r) => Either::Right(Pin::into_inner(r)),
         }
     }
 }
