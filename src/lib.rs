@@ -26,6 +26,7 @@ use std::fmt;
 use std::iter;
 use std::ops::Deref;
 use std::ops::DerefMut;
+use std::pin::Pin;
 #[cfg(any(test, feature = "use_std"))]
 use std::io::{self, Write, Read, BufRead};
 #[cfg(any(test, feature = "use_std"))]
@@ -520,6 +521,53 @@ impl<L, R> Either<L, R> {
         match self {
             Either::Left(l) => f(l),
             Either::Right(r) => r,
+        }
+    }
+
+    /// Convert `Pin<&Either<L, R>>` to `Either<Pin<&L>, Pin<&R>>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use either::*;
+    /// use std::pin::Pin;
+    ///
+    /// let either: Either<String, u32> = Left("3".into());
+    /// let pinned = Pin::new(&either);
+    ///
+    /// assert_eq!(pinned.as_pin(), Left(Pin::new(&"3".into())));
+    ///
+    /// ```
+    pub fn as_pin(self: Pin<&Self>) -> Either<Pin<&L>, Pin<&R>> {
+        let this = self.get_ref();
+
+        // the following unsafe invocations are safe, since the only required contract when
+        // constructing a Pin, is that the pointee to the inner value will not be moved out, until
+        // it's dropped. since `self` is already wrapped in a `Pin` here, we know that it's
+        // completely impossible for the pointee to be moved out, and thus we can safely create a
+        // new `Pin` referencing its subfield which here is a variant.
+
+        match this {
+            Either::Left(ref l) => Either::Left(unsafe { Pin::new_unchecked(l) }),
+            Either::Right(ref r) => Either::Right(unsafe { Pin::new_unchecked(r) }),
+        }
+    }
+
+    pub fn as_pin_mut(self: Pin<&mut Self>) -> Either<Pin<&mut L>, Pin<&mut R>> {
+
+        // the following unsafe invocations are safe, for the same reasons as with the above
+        // function. in short: Pin requires that the pointee won't be moved, and thus we can create
+        // new finer-grained `Pin`s of the same parent `Pin`, since the parent `Pin` already
+        // follows the contract. taking a subfield of a value will not allow it move be moved out
+        // either.
+
+        unsafe {
+            let this = self.get_unchecked_mut();
+
+            match this {
+                Either::Left(ref mut l) => Either::Left(Pin::new_unchecked(l)),
+                Either::Right(ref mut r) => Either::Right(Pin::new_unchecked(r)),
+            }
         }
     }
 }
